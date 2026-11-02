@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>南航评论区 · 校园一站式社区平台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { padding-bottom:40px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:22px 24px 0; }
+
+  /* ===== Hero 圆角深蓝卡（对齐手机版） ===== */
+  .hero-card { position:relative; overflow:hidden; border-radius:20px; color:#fff;
+    background:linear-gradient(135deg,#1e4f9e,#164084 55%,#0e2d61);
+    padding:32px 32px 26px; box-shadow:0 10px 30px rgba(22,64,132,.25); }
+  .hero-card .hero-img { position:absolute; right:0; top:0; z-index:0; height:100%; width:46%;
+    object-fit:cover; object-position:center; opacity:.8; pointer-events:none; user-select:none;
+    -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 18%,#000 42%);
+    mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 18%,#000 42%); }
+  .hero-card .hero-bubble { position:absolute; right:22px; top:20px; z-index:2; width:38px;
+    height:38px; border-radius:50%; background:rgba(255,255,255,.2); display:flex;
+    align-items:center; justify-content:center; color:#fff; backdrop-filter:blur(4px); }
+  .hero-card .hero-bubble svg { width:17px; height:17px; display:block; }
+  .hero-text { position:relative; z-index:1; }
+  .hero-text h1 { font-size:28px; font-weight:700; display:flex; align-items:center; gap:8px;
+    letter-spacing:.3px; }
+  .hero-text h1 .h1-pin { display:inline-flex; opacity:.85; }
+  .hero-text h1 .h1-pin svg { width:17px; height:17px; display:block; }
+  .hero-sub { font-size:14px; color:rgba(255,255,255,.85); margin-top:12px; }
+  .hero-sub2 { font-size:13px; color:rgba(255,255,255,.6); margin-top:4px; }
+
+  .hero-stats { position:relative; z-index:2; display:grid; grid-template-columns:repeat(5,1fr);
+    gap:12px; margin-top:26px; }
+  .stat-card { background:#fff; border-radius:14px; padding:12px 8px 14px; text-align:center;
+    box-shadow:0 3px 14px rgba(10,32,72,.16); border:1px solid #eef2f8; }
+  .stat-card .badge { display:block; width:fit-content; margin:0 auto; padding:2px 10px;
+    border-radius:999px; font-size:10px; font-weight:500; }
+  .stat-card .n { font-size:24px; font-weight:700; color:#16294a; line-height:1.15; margin-top:6px;
+    font-variant-numeric:tabular-nums; }
+  .stat-card .t { font-size:11px; color:#8a97ad; margin-top:4px; white-space:nowrap; }
+  .badge-purple { background:#ece7ff; color:#7c5cd6; }
+  .badge-orange { background:#ffedd5; color:#f59e0b; }
+  .badge-green { background:#d9f5ea; color:#10b981; }
+  .badge-blue { background:#dbeafe; color:#3b82f6; }
+  .badge-indigo { background:#e0e7ff; color:#6366f1; }
+
+  /* ===== 模块卡片（2×2 大图标卡） ===== */
+  .section-title { font-size:16px; font-weight:700; color:#16294a; margin:28px 0 14px; }
+  .mod-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .mod { background:#fff; border-radius:18px; padding:22px 22px 20px; text-decoration:none;
+    color:inherit; display:block; box-shadow:0 4px 16px rgba(22,64,132,.06); transition:.18s;
+    border:1px solid #eef2f8; }
+  .mod:hover { transform:translateY(-3px); box-shadow:0 12px 28px rgba(22,64,132,.12); }
+  .mod-top { display:flex; align-items:flex-start; justify-content:space-between; }
+  .mod-ico { width:52px; height:52px; border-radius:14px; background:#eef3fb; color:#164084;
+    display:flex; align-items:center; justify-content:center; }
+  .mod-ico svg { width:26px; height:26px; display:block; }
+  .mod h3 { font-size:18px; color:#16294a; margin:14px 0 6px; }
+  .mod p { font-size:13px; color:#94a3b8; line-height:1.7; }
+
+  /* ===== 后续规划 / 技术栈 ===== */
+  .roadmap { margin-top:26px; background:#fff; border-radius:18px; padding:22px;
+    box-shadow:0 6px 20px rgba(22,64,132,.08); }
+  .roadmap .section-title { margin:0 0 12px; }
+  .roadmap ul { margin-left:18px; font-size:13px; color:#6b7a90; line-height:2; }
+  .tech { margin-top:18px; font-size:12px; color:#8a97ad; line-height:1.9; }
+
+  /* ===== 机器学习能力面板 ===== */
+  .ml-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  .ml-card { background:#fff; border-radius:18px; padding:18px 20px; display:flex; gap:16px;
+    box-shadow:0 4px 16px rgba(22,64,132,.06); border:1px solid #eef2f8; }
+  .ml-ico { width:46px; height:46px; flex:0 0 46px; border-radius:13px; background:#eef3fb;
+    display:flex; align-items:center; justify-content:center; font-size:21px; }
+  .ml-main { flex:1; min-width:0; }
+  .ml-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .ml-head h3 { font-size:15px; color:#16294a; }
+  .ml-num { background:#dbeafe; color:#164084; font-size:11.5px; font-weight:600;
+    padding:2px 10px; border-radius:999px; }
+  .ml-card p { font-size:12.8px; color:#7c8aa3; line-height:1.85; margin-top:7px; }
+
+  .banner { display:none; background:#fff3cd; color:#8a6d1a; font-size:13px; padding:8px 24px; }
+  .banner.show { display:block; }
+
+  @media (max-width: 720px) {
+    .mod-grid { grid-template-columns:1fr; }
+    .hero-card { padding:24px 20px 22px; }
+    .hero-stats { grid-template-columns:repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="header-root"></div>
+<div class="banner" id="banner">⚠ 无法连接后端：请先在 backend 目录运行 python app.py，再刷新本页</div>
+
+<div class="wrap">
+  <!-- Hero：圆角深蓝卡 + 主楼实拍图 -->
+  <section class="hero-card">
+    <img class="hero-img" src="主楼-最终.png" alt="南京航空航天大学将军路校区主楼"
+         onerror="this.style.display='none'">
+    <div class="hero-bubble">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
+    </div>
+    <div class="hero-text">
+      <h1>南航评论区 <span class="h1-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.4-7-11a7 7 0 1 1 14 0c0 5.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span></h1>
+      <p class="hero-sub">校园地图 · 失物招领 · 二手市集 · 校园评论</p>
+      <p class="hero-sub2">将军路校区一站式校园社区</p>
+    </div>
+    <div class="hero-stats" id="homeStats"></div>
+  </section>
+
+  <div class="section-title">平台模块</div>
+  <div class="mod-grid">
+    <a class="mod" href="map.html">
+      <div class="mod-top"><span class="mod-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.4-7-11a7 7 0 1 1 14 0c0 5.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span></div>
+      <h3>校园地图</h3>
+      <p>逛遍校园每个地点，看评论发点评；支持楼层平面图、备注与步行导航。</p>
+    </a>
+    <a class="mod" href="lostfound.html">
+      <div class="mod-top"><span class="mod-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="7.5" width="15" height="12" rx="3"/><path d="M9 7.5V5.8A3 3 0 0 1 15 5.8v1.7"/><path d="M4.5 12.5h15"/></svg></span></div>
+      <h3>失物招领</h3>
+      <p>丢了东西？捡到东西？来这里喊一声，支持图片与地点关联。</p>
+    </a>
+    <a class="mod" href="market.html">
+      <div class="mod-top"><span class="mod-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l1 12h-13l1-12z"/><path d="M9.5 8V6.2a2.5 2.5 0 0 1 5 0V8"/></svg></span></div>
+      <h3>二手市集</h3>
+      <p>教材、数码、生活用品，捡漏好去处；明码标价、图片展示。</p>
+    </a>
+    <a class="mod" href="forum.html">
+      <div class="mod-top"><span class="mod-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg></span></div>
+      <h3>校园评论</h3>
+      <p>学习、食堂、选课，畅所欲言；支持图文发帖、点赞与评论。</p>
+    </a>
+  </div>
+
+  <div class="section-title">机器学习能力</div>
+  <div class="ml-grid" id="mlPanel"></div>
+
+  <div class="roadmap">
+    <div class="section-title">后续规划</div>
+    <ul>
+      <li>📱 微信小程序端复用同一套后端 API（BaaS/云托管），支持手机定位与扫码认领</li>
+      <li>🔐 完善账号体系：学号认证、头像、消息通知推送到微信服务号</li>
+      <li>🧠 机器学习继续升级：失物图片相似度（图像特征）、内容安全模型的在线增量学习</li>
+      <li>🏫 从将军路校区扩展至明故宫/天目湖校区，接入更多校园 POI</li>
+    </ul>
+  </div>
+
+  <div class="tech">
+    技术栈：Flask + SQLite 后端 · 腾讯地图 GL JS（合规密钥代理模式）· 单页 HTML/CSS/JS 前端<br>
+    机器学习：纯 Python 实现的文本匹配 / 内容安全 / 语义检索（无 sklearn、jieba 依赖，exe 可直接运行）
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+/* ML 能力面板：数据全部来自 /api/stats 的真实统计 */
+function renderMlPanel(s) {
+  const pct = v => (v == null ? '-' : (v * 100).toFixed(1) + '%');
+  const cards = [
+    ['🎒', '失物招领智能匹配',
+     `${s.lf_match_count || 0} 组匹配`,
+     `寻物与招领自动比对文本相似度、物品类别、地点、时间与特征词，`
+     + `高置信匹配（≥60%）给双方互相推送站内通知，已推送 ${s.notification_count || 0} 条。`],
+    ['🛡️', '垃圾广告 / 引战 / 不文明识别',
+     `已拦截 ${s.moderation_blocked || 0} 条`,
+     `规则层（高精度）+ TF-IDF 类质心分类器（泛化）双层判定，`
+     + `命中即拦截、不允许发表，并记入处置日志（没有人工审核队列）。`
+     + `模型 5 折交叉验证准确率 ${pct(s.moderation_acc)}，宏平均 F1 ${pct(s.moderation_macro_f1)}。`],
+    ['🔍', '二手市集语义检索',
+     `${s.market_open || 0} 件在售`,
+     `同义词表 + 主题上位词 + 从平台语料学到的 PMI 共现词做查询扩展，`
+     + `词级 / 字级 / 覆盖率三通道融合排序——搜「笔记本」能找到电脑，搜「单车」能找到自行车。`],
+  ];
+  document.getElementById('mlPanel').innerHTML = cards.map(([ico, t, n, d]) => `
+    <div class="ml-card">
+      <div class="ml-ico">${ico}</div>
+      <div class="ml-main">
+        <div class="ml-head"><h3>${t}</h3><span class="ml-num">${n}</span></div>
+        <p>${d}</p>
+      </div>
+    </div>`).join('');
+}
+
+async function loadStats() {
+  try {
+    const s = await fetch('http://127.0.0.1:5000/api/stats').then(r => r.json());
+    document.getElementById('banner').classList.remove('show');
+    document.getElementById('homeStats').innerHTML = [
+      [s.poi_count, '校园地点', '校园', 'badge-purple'],
+      [s.lostfound_open, '失物待处理', '失物', 'badge-orange'],
+      [s.market_open, '市集在售', '市集', 'badge-green'],
+      [s.post_count, '论坛帖子', '论坛', 'badge-blue'],
+      [s.comment_count, '地点评论', '地点', 'badge-indigo'],
+    ].map(([n, t, b, cls]) => `
+      <div class="stat-card">
+        <span class="badge ${cls}">${b}</span>
+        <div class="n">${n}</div>
+        <div class="t">${t}</div>
+      </div>`).join('');
+    renderMlPanel(s);
+  } catch (e) {
+    document.getElementById('banner').classList.add('show');
+  }
+}
+renderHeader('index.html');
+injectAuthModal();
+loadStats();
+</script>
+</body>
+</html>

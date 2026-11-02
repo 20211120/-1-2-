@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>校园地图 · 南航评论区</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="common.css">
+<style>
+  html,body { height:100%; }
+  body { display:flex; flex-direction:column; }
+  .subbar { height:34px; background:#fff; border-bottom:1px solid #e3e8f0; display:flex;
+            align-items:center; padding:0 18px; gap:16px; font-size:12px; color:#5b7bb4; }
+  .main { flex:1; display:flex; min-height:0; position:relative; }
+  .panel { width:270px; background:#fff; border-right:1px solid #e3e8f0; display:flex;
+           flex-direction:column; flex-shrink:0; }
+  .search-box { padding:12px; border-bottom:1px solid #eef2f8; }
+  .search-box input { width:100%; padding:9px 12px; border:1px solid #e6ebf3; border-radius:10px;
+                      font-size:13px; outline:none; transition:.15s; }
+  .search-box input:focus { border-color:#164084; box-shadow:0 0 0 3px rgba(22,64,132,.08); }
+  .cats { display:flex; flex-wrap:wrap; gap:6px; padding:12px; border-bottom:1px solid #eef2f8; }
+  .cat { font-size:12px; padding:4px 12px; border-radius:999px; background:#f4f7fb;
+         color:#4a5a75; cursor:pointer; transition:.15s; border:1px solid #eef2f8; }
+  .cat.active { background:#164084; color:#fff; border-color:#164084; }
+  .poi-list { flex:1; overflow-y:auto; }
+  .poi-item { padding:12px 14px; border-bottom:1px solid #f4f6fa; cursor:pointer; transition:.12s; }
+  .poi-item:hover { background:#f7f9fd; }
+  .poi-item .name { font-size:14px; font-weight:600; color:#16294a; }
+  .poi-item .meta { font-size:12px; color:#94a3b8; margin-top:3px; display:flex; gap:8px; }
+
+  #map { flex:1; height:100%; position:relative; z-index:0; }
+  /* 路线信息浮窗（须在 TMap 内部 1000 层之上） */
+  .route-info { position:absolute; left:12px; top:12px; z-index:1001; background:#fff;
+                border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.15); padding:10px 12px;
+                max-width:280px; display:none; }
+  .route-info h4 { font-size:13px; color:#26344d; margin-bottom:6px; }
+  .route-info .steps { max-height:180px; overflow-y:auto; font-size:12px; color:#5b6b87;
+                       line-height:1.7; }
+  .route-info .close { position:absolute; right:8px; top:6px; cursor:pointer; color:#8a97ad; }
+  .choose-tip { position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:1001;
+                background:#164084; color:#fff; font-size:13px; padding:6px 14px;
+                border-radius:16px; display:none; }
+  .fab { position:absolute; right:14px; bottom:20px; z-index:1001; background:#e45656; color:#fff;
+         border:none; border-radius:22px; padding:10px 18px; font-size:13px; cursor:pointer;
+         box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  .fab:hover { background:#c94545; }
+  /* 我的定位按钮 */
+  .locate-btn { position:absolute; right:14px; bottom:76px; z-index:1001; width:40px; height:40px;
+                border-radius:50%; background:#fff; border:1px solid #d5dce8; cursor:pointer;
+                font-size:18px; box-shadow:0 2px 8px rgba(0,0,0,.18); line-height:1; }
+  .locate-btn:hover { background:#f0f4fa; }
+  .note-modal-box { background:#fff; border-radius:18px; padding:22px; width:380px;
+                    max-width:92vw; border:1px solid #eef2f8;
+                    box-shadow:0 24px 56px rgba(15,32,64,.28); }
+  .note-modal-box h3 { font-size:15px; font-weight:600; color:#16294a; margin-bottom:10px; }
+  .note-modal-box textarea,.note-modal-box select { width:100%; border:1px solid #e6ebf3;
+        border-radius:10px; padding:10px 12px; font-size:13px; outline:none; font-family:inherit; }
+  .note-modal-box textarea:focus,.note-modal-box select:focus { border-color:#164084; }
+  .note-modal-box textarea { height:70px; resize:none; }
+  .note-modal-box select { margin-top:8px; }
+  .note-modal-box .actions { display:flex; gap:8px; margin-top:14px; }
+  .note-modal-box .actions button { flex:1; padding:10px; border-radius:10px; border:none;
+                                    cursor:pointer; font-size:13px; }
+
+  .detail { width:340px; background:#fff; border-left:1px solid #e3e8f0; display:none;
+            flex-direction:column; flex-shrink:0; }
+  .detail.open { display:flex; }
+  .detail-head { padding:16px 14px; border-bottom:1px solid #eef2f8; position:relative; }
+  .detail-head h2 { font-size:16px; font-weight:600; color:#16294a; }
+  .detail-head .desc { font-size:12px; color:#94a3b8; margin-top:4px; }
+  .close-btn { position:absolute; top:10px; right:12px; cursor:pointer; color:#8a97ad;
+               font-size:16px; border:none; background:none; }
+  .senti-bar { margin-top:10px; height:8px; border-radius:4px; background:#e8edf4;
+               overflow:hidden; }
+  .senti-bar .pos { background:#e45656; height:100%; }
+  .senti-text { font-size:12px; color:#8a97ad; margin-top:5px; }
+  .act-row { display:flex; gap:8px; margin:10px 14px 0; }
+  .act-row button { flex:1; padding:7px 0; border-radius:6px; border:1px solid #164084;
+                    background:#fff; color:#164084; cursor:pointer; font-size:12px; }
+  .act-row button.primary { background:#164084; color:#fff; }
+  .tabs { display:flex; margin:12px 14px 0; border-bottom:1px solid #eef1f6; }
+  .tab { padding:6px 14px; font-size:13px; color:#8a97ad; cursor:pointer; border-bottom:2px solid transparent; }
+  .tab.active { color:#164084; font-weight:600; border-bottom-color:#164084; }
+  .tab-body { flex:1; overflow-y:auto; padding:10px 14px; }
+  .comment { padding:10px 0; border-bottom:1px solid #f2f4f8; }
+  .comment .c-head { display:flex; align-items:center; gap:8px; font-size:12px; color:#8a97ad; }
+  .comment .c-body { font-size:13px; color:#333c4e; margin-top:5px; line-height:1.5; }
+  .note { padding:10px 0; border-bottom:1px solid #f2f4f8; }
+  .note .n-head { font-size:12px; color:#8a97ad; display:flex; gap:8px; align-items:center; }
+  .note .n-body { font-size:13px; color:#333c4e; margin-top:5px; line-height:1.5; }
+  .form { padding:12px 14px; border-top:1px solid #eef1f6; }
+  .form input,.form textarea,.form select { width:100%; border:1px solid #d5dce8;
+        border-radius:6px; padding:7px 9px; font-size:13px; outline:none; font-family:inherit; }
+  .form textarea { margin-top:6px; height:60px; resize:none; }
+  .form .row { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .form button { margin-top:8px; width:100%; padding:8px; background:#e45656; color:#fff;
+                 border:none; border-radius:6px; cursor:pointer; font-size:13px; }
+  .ml-result { margin-top:8px; font-size:12px; color:#2e7d32; display:none; }
+
+  .modal { display:none; position:fixed; inset:0; background:rgba(20,30,50,.45); z-index:9000;
+           align-items:center; justify-content:center; }
+  .modal.open { display:flex; }
+  .modal-box { background:#fff; border-radius:18px; padding:20px; width:720px; max-width:94vw;
+               border:1px solid #eef2f8; box-shadow:0 24px 56px rgba(15,32,64,.28); }
+  .modal-box h3 { font-size:15px; color:#26344d; margin-bottom:10px; display:flex;
+                  justify-content:space-between; align-items:center; }
+  .floor-tabs { display:flex; gap:8px; margin-bottom:10px; }
+  .floor-tab { font-size:12px; padding:4px 14px; border-radius:12px; background:#eef2f9;
+               cursor:pointer; color:#4a5a75; }
+  .floor-tab.active { background:#164084; color:#fff; }
+  #floorSvg { width:100%; }
+  .room { cursor:pointer; }
+  .room rect { fill:#eef4ff; stroke:#7d9ccc; stroke-width:1.5; }
+  .room:hover rect { fill:#d4e4ff; }
+  .room text { font-size:12px; fill:#2c3e60; pointer-events:none; }
+  .banner { display:none; background:#fff3cd; color:#8a6d1a; font-size:13px; padding:8px 18px; }
+  .banner.show { display:block; }
+</style>
+
+<script>
+// ===== 腾讯地图 key 配置 =====
+// 想让本地打开（http://127.0.0.1:8000/map.html）时也能用真实步行导航/地点搜索：
+// 到 https://lbs.qq.com 免费注册并申请一个「WebService API / 地图SDK」key，填进下面引号里。
+// 留空 = 保持 WorkBuddy 代理模式（WorkBuddy 预览环境自动替换占位符）。
+const TMAP_KEY = '3NIBZ-IW5EJ-55OFI-XTXNT-LJZE3-MUBFS';
+</script>
+<script>
+  if (TMAP_KEY) {
+    // 有自己的 key：加载官方 SDK，站内步行路线/搜索服务全部可用
+    document.write('<script src="https://map.qq.com/api/gljs?v=1.exp&libraries=service&key=' + TMAP_KEY + '"><\/script>');
+  } else {
+    // 没有 key：保持 WorkBuddy 代理占位符（绝对不要改动这两行）
+    window._TMapSecurityConfig = {
+      serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__',
+    };
+    document.write('<script src="https://map.qq.com/api/gljs?v=1.exp&libraries=service"><\/script>');
+  }
+</script>
+</head>
+<body>
+<div id="header-root"></div>
+<div class="subbar" id="subbar"></div>
+<div class="banner" id="banner">⚠ 无法连接后端：请先在 backend 目录运行 python app.py，再刷新本页</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="search-box"><input id="searchInput" placeholder="搜索地点或备注，如：图书馆 / 最高的楼"></div>
+    <div class="cats" id="cats"></div>
+    <div class="poi-list" id="poiList"></div>
+  </div>
+
+  <div id="map">
+    <div class="route-info" id="routeInfo" onclick="event.stopPropagation()">
+      <span class="close" onclick="clearRoute()">✕</span>
+      <h4 id="routeSummary"></h4>
+      <div class="steps" id="routeSteps"></div>
+    </div>
+    <div class="choose-tip" id="chooseTip">正在选择起点：请点击地图上的位置</div>
+    <div class="choose-tip" id="noteTip" style="background:#e45656">正在标注：请点击地图上任意位置添加备注</div>
+    <button class="fab" onclick="event.stopPropagation();startAddNote()">＋ 在此标注备注</button>
+    <button class="locate-btn" id="locateBtn" onclick="event.stopPropagation();locateMe()" title="定位到我的位置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;display:block;margin:auto"><circle cx="12" cy="12" r="7"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+
+  <div class="detail" id="detail">
+    <div class="detail-head">
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+      <h2 id="dName"></h2>
+      <div class="desc" id="dDesc"></div>
+      <div class="senti-text" id="dSentiText"></div>
+    </div>
+    <div class="act-row">
+      <button class="primary" id="navBtn" onclick="startNav()">导航到这里</button>
+      <button id="floorBtn" onclick="openFloorModal()" style="display:none">楼层平面图</button>
+      <button id="noteDelBtn" onclick="deleteNotePanel()" style="display:none">删除备注</button>
+    </div>
+    <div class="tabs">
+      <div class="tab active" id="tabComment" onclick="switchTab('comment')">评论</div>
+      <div class="tab" id="tabNote" onclick="switchTab('note')">备注</div>
+    </div>
+    <div class="tab-body" id="tabBody"></div>
+    <div class="form">
+      <input id="cAuthor" placeholder="昵称（已登录则自动署名）">
+      <textarea id="cContent" placeholder="说说这个地点怎么样…发布后自动匹配标签"></textarea>
+      <div class="row" id="visRow" style="display:none">
+        <select id="nVis">
+          <option value="public">公开（所有人可见）</option>
+          <option value="private">私密（仅自己可见）</option>
+        </select>
+      </div>
+      <button onclick="submitCurrent()" id="submitBtn">发表评论</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="floorModal">
+  <div class="modal-box">
+    <h3><span id="floorTitle">一号楼 楼层平面图</span>
+        <button class="close-btn" style="position:static" onclick="closeFloorModal()">✕</button></h3>
+    <div class="floor-tabs" id="floorTabs"></div>
+    <svg id="floorSvg" viewBox="0 0 680 260"></svg>
+    <div class="muted" style="margin-top:6px">点击教室即可查看/评论该教室</div>
+  </div>
+</div>
+
+<!-- 任意点标注：创建备注 -->
+<div class="modal" id="noteCreateModal">
+  <div class="note-modal-box">
+    <h3>添加地点备注</h3>
+    <div class="muted" id="noteCoord"></div>
+    <textarea id="noteContent" placeholder="如：全校最高的楼 / 拍毕业照的宝藏机位 / 这里有流浪猫"></textarea>
+    <select id="noteVis">
+      <option value="public">公开（所有用户可搜索到）</option>
+      <option value="private">私密（仅自己可见）</option>
+    </select>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="rePickNote()">↺ 重新选点</button>
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeNoteCreate()">取消</button>
+      <button class="btn-danger" onclick="submitMapNote()">确认标注</button>
+    </div>
+  </div>
+</div>
+
+<!-- 备注详情 -->
+<div class="modal" id="noteDetailModal">
+  <div class="note-modal-box">
+    <h3>备注详情</h3>
+    <div class="muted" id="ndMeta"></div>
+    <div id="ndBody" style="font-size:14px;color:#333c4e;line-height:1.7;margin:10px 0"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeNoteDetail()">关闭</button>
+      <button class="btn-danger" id="ndDelete" onclick="deleteCurrentNote()" style="display:none">删除</button>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+/* ============ WGS84 -> GCJ02 坐标转换（浏览器定位为 WGS84，腾讯地图为 GCJ02） ============ */
+const PI = Math.PI, A = 6378245.0, EE = 0.00669342162296594323;
+function outOfChina(lat, lng) {
+  return lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271;
+}
+function transformLat(x, y) {
+  let ret = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+  ret += (20.0*Math.sin(6.0*x*PI) + 20.0*Math.sin(2.0*x*PI)) * 2.0/3.0;
+  ret += (20.0*Math.sin(y*PI) + 40.0*Math.sin(y/3.0*PI)) * 2.0/3.0;
+  ret += (160.0*Math.sin(y/12.0*PI) + 320*Math.sin(y*PI/30.0)) * 2.0/3.0;
+  return ret;
+}
+function transformLng(x, y) {
+  let ret = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+  ret += (20.0*Math.sin(6.0*x*PI) + 20.0*Math.sin(2.0*x*PI)) * 2.0/3.0;
+  ret += (20.0*Math.sin(x*PI) + 40.0*Math.sin(x/3.0*PI)) * 2.0/3.0;
+  ret += (150.0*Math.sin(x/12.0*PI) + 300.0*Math.sin(x/30.0*PI)) * 2.0/3.0;
+  return ret;
+}
+function wgs84ToGcj02(lat, lng) {
+  if (outOfChina(lat, lng)) return [lat, lng];
+  let dLat = transformLat(lng - 105.0, lat - 35.0);
+  let dLng = transformLng(lng - 105.0, lat - 35.0);
+  const radLat = lat / 180.0 * PI;
+  let magic = Math.sin(radLat);
+  magic = 1 - EE * magic * magic;
+  const sqrtMagic = Math.sqrt(magic);
+  dLat = (dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * PI);
+  dLng = (dLng * 180.0) / (A / sqrtMagic * Math.cos(radLat) * PI);
+  return [lat + dLat, lng + dLng];
+}
+
+/* ============ 地图模块 ============ */
+const CATS = [['', '全部'], ['library','图书馆'], ['teaching','教学楼'], ['canteen','食堂'],
+              ['sports','体育'], ['dorm','宿舍'], ['other','其他']];
+/* 所有地点图标统一为红色（品牌红） */
+const CAT_COLOR = { library:'#e45656', teaching:'#e45656', canteen:'#e45656',
+                    sports:'#e45656', dorm:'#e45656', other:'#e45656', classroom:'#e45656' };
+const CAT_NAME = Object.fromEntries(CATS.slice(1));
+
+let map, notesLayer, pois = [], mapNotes = [], currentPoi = null, activeCat = '', curTab = 'comment';
+let roomIdMap = {}, routePolyline = null, startMarker = null, choosingStart = false, startPos = null;
+let addingNote = false, notePos = null, currentNote = null;
+let notePickMarker = null, myLocMarker = null, myLoc = null;
+let singleMarker = null;   // 当前唯一高亮的地点图标（默认全隐藏，选中才显示）
+let noteFocusMarker = null; // 点击备注后临时显示的定位图钉
+let notePanel = null;      // 右侧详情面板当前展示的备注（POI 模式时为 null）
+
+function markerIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
+    <path d="M13 1C6.9 1 2 5.9 2 12c0 8 11 21 11 21s11-13 11-21c0-6.1-4.9-11-11-11z"
+      fill="${color}" stroke="#fff" stroke-width="1.5"/>
+    <circle cx="13" cy="12" r="4" fill="#fff"/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+/* 我的位置：蓝色圆点（仿主流地图 App） */
+function myLocIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+    <circle cx="11" cy="11" r="10" fill="#1e6fd9" fill-opacity="0.18"/>
+    <circle cx="11" cy="11" r="6" fill="#1e6fd9" stroke="#fff" stroke-width="2.5"/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+function showMyLoc(pos) {
+  myLoc = pos;
+  if (myLocMarker) myLocMarker.setMap(null);
+  myLocMarker = new TMap.MultiMarker({
+    map, styles: { me: new TMap.MarkerStyle({ width: 22, height: 22,
+      src: myLocIcon(), anchor: { x: 11, y: 11 } }) },
+    geometries: [{ id: 'me', styleId: 'me', position: pos }],
+  });
+}
+
+/* 标注选点：临时红色图钉，让用户看到自己选了哪里 */
+function showNotePick(pos) {
+  if (notePickMarker) notePickMarker.setMap(null);
+  notePickMarker = new TMap.MultiMarker({
+    map, styles: { pick: new TMap.MarkerStyle({ width: 30, height: 40,
+      src: markerIcon('#e45656'), anchor: { x: 15, y: 40 } }) },
+    geometries: [{ id: 'pick', styleId: 'pick', position: pos }],
+  });
+}
+function clearNotePick() {
+  if (notePickMarker) { notePickMarker.setMap(null); notePickMarker = null; }
+}
+
+function initMap() {
+  map = new TMap.Map('map', { zoom: 16, center: new TMap.LatLng(31.9387, 118.7917) });
+  map.on('click', e => {
+    // 任意点备注模式优先
+    if (addingNote) {
+      addingNote = false;
+      notePos = e.latLng;
+      showNotePick(notePos);   // 立即在选中的位置打上图钉
+      map.panBy([0, -180]);    // 地图内容下移，让图钉露出弹窗遮挡区
+      document.getElementById('noteTip').style.display = 'none';
+      document.getElementById('noteCoord').textContent =
+        `已选中位置：${notePos.getLat().toFixed(5)}, ${notePos.getLng().toFixed(5)}`;
+      document.getElementById('noteCreateModal').classList.add('open');
+      return;
+    }
+    if (!choosingStart) return;
+    startPos = e.latLng;
+    choosingStart = false;
+    document.getElementById('chooseTip').style.display = 'none';
+    if (startMarker) startMarker.setMap(null);
+    startMarker = new TMap.MultiMarker({
+      map, styles: { s: new TMap.MarkerStyle({ width: 22, height: 22,
+        src: markerIcon('#2e9e4f'), anchor: { x: 11, y: 11 } }) },
+      geometries: [{ id: 'start', styleId: 's', position: startPos }],
+    });
+    if (currentPoi) doRoute(startPos, new TMap.LatLng(currentPoi.lat, currentPoi.lng));
+  });
+}
+
+/* 默认不铺图标：只在选中某个地点时，点亮那一个地点的高亮图标（放大醒目） */
+function highlightMarker(p) {
+  if (singleMarker) { singleMarker.setMap(null); singleMarker = null; }
+  if (!p || !p.lat || !p.lng) return;
+  const color = CAT_COLOR[p.category] || '#e45656';
+  singleMarker = new TMap.MultiMarker({
+    map,
+    styles: { hl: new TMap.MarkerStyle({ width: 34, height: 44,
+      src: markerIcon(color), anchor: { x: 17, y: 44 } }) },
+    geometries: [{ id: 'hl', styleId: 'hl',
+      position: new TMap.LatLng(p.lat, p.lng) }],
+  });
+  singleMarker.on('click', () => openDetail(p.id));
+}
+function clearHighlightMarker() {
+  if (singleMarker) { singleMarker.setMap(null); singleMarker = null; }
+}
+
+function renderPoiList(poiArr, noteArr) {
+  const box = document.getElementById('poiList');
+  const poiHtml = poiArr.map(p => {
+    const s = p.stats;
+    return `<div class="poi-item" onclick="openDetail(${p.id})">
+      <div class="name">${esc(p.name)}</div>
+      <div class="meta"><span>${CAT_NAME[p.category] || ''}</span>
+        <span>评论 ${s.total}</span></div></div>`;
+  }).join('');
+  const noteHtml = (noteArr || []).map(n => {
+    const snippet = n.content.length > 26 ? n.content.slice(0, 26) + '…' : n.content;
+    return `<div class="poi-item" onclick="openNoteById(${n.id})">
+      <div class="name">${esc(snippet)}</div>
+      <div class="meta"><span>${n.poi_name ? esc(n.poi_name) : '自由标注'}</span>
+        <span>${esc(n.author)}</span>
+        <span>${n.visibility === 'private' ? '私密' : '公开'}</span></div></div>`;
+  }).join('');
+  box.innerHTML = (poiHtml + noteHtml) || '<div style="padding:20px" class="muted">无匹配地点或备注</div>';
+}
+
+function renderList() {
+  const kw = document.getElementById('searchInput').value.trim();
+  if (!kw) {
+    renderPoiList(pois.filter(p => !activeCat || p.category === activeCat), []);
+    return;
+  }
+  // 组合搜索：POI 名称/描述 + 公开备注内容（自己的私密备注也能搜到）
+  fetch(`${API}/search_map?q=${encodeURIComponent(kw)}`,
+        getToken() ? { headers: { Authorization: 'Bearer ' + getToken() } } : {})
+    .then(r => r.json())
+    .then(res => {
+      window._lastSearchNotes = res.notes;
+      let arr = res.pois;
+      if (activeCat) arr = arr.filter(p => p.category === activeCat);
+      renderPoiList(arr, res.notes);
+    })
+    .catch(() => renderPoiList([], []));
+}
+function renderCats() {
+  document.getElementById('cats').innerHTML = CATS.map(([v, n]) =>
+    `<span class="cat ${v === activeCat ? 'active' : ''}" onclick="setCat('${v}')">${n}</span>`).join('');
+}
+function setCat(v) { activeCat = v; renderCats(); renderList(); }
+
+/* ---------- 详情 ---------- */
+async function openDetail(pid) {
+  const [d, cmts, notes] = await Promise.all([
+    fetch(`${API}/pois/${pid}`).then(r => r.json()),
+    fetch(`${API}/pois/${pid}/comments`).then(r => r.json()),
+    fetch(`${API}/pois/${pid}/notes`,
+      getToken() ? { headers: { Authorization: 'Bearer ' + getToken() } } : {}).then(r => r.json())
+      .catch(() => []),
+  ]);
+  currentPoi = d;
+  notePanel = null;   // 进入 POI 模式
+  document.getElementById('tabNote').style.display = '';      // 恢复"备注"标签页
+  document.getElementById('noteDelBtn').style.display = 'none';
+  clearNoteFocus();
+  document.getElementById('detail').classList.add('open');
+  document.getElementById('dName').textContent = d.name;
+  document.getElementById('dDesc').textContent = d.description || '';
+  const s = d.stats;
+  document.getElementById('dSentiText').textContent = s.total
+    ? `共 ${s.total} 条评论`
+    : '暂无评论，来抢沙发';
+  const btn = document.getElementById('floorBtn');
+  if (d.children && d.children.length) {
+    btn.style.display = 'block';
+    roomIdMap = Object.fromEntries(d.children.map(c => [c.name, c.id]));
+  } else btn.style.display = 'none';
+  window._comments = cmts; window._notes = notes;
+  switchTab('comment');
+  if (map && d.lat) {
+    map.setCenter(new TMap.LatLng(d.lat, d.lng));
+    highlightMarker(d);   // 选中才点亮该地点图标
+  }
+}
+
+/* 备注详情：像 POI 一样在右侧面板展示，并支持评论互动 */
+async function openNotePanel(n) {
+  currentPoi = null;
+  notePanel = n;
+  let cmts = [];
+  try {
+    cmts = await fetch(`${API}/map_notes/${n.id}/comments`,
+      getToken() ? { headers: { Authorization: 'Bearer ' + getToken() } } : {}).then(r => r.json());
+  } catch (e) { cmts = []; }
+  window._noteComms = cmts;
+  clearHighlightMarker();
+  document.getElementById('detail').classList.add('open');
+  document.getElementById('dName').textContent =
+    n.content.length > 16 ? n.content.slice(0, 16) + '…' : n.content;
+  document.getElementById('dDesc').textContent =
+    `${n.poi_name ? n.poi_name : '自由标注'} · ${n.author} · ` +
+    (n.visibility === 'private' ? '只自己可见' : '公开');
+  const total = cmts.length;
+  document.getElementById('dSentiText').textContent = total
+    ? `共 ${total} 条评论`
+    : '还没有人评论这个备注，来聊聊';
+  document.getElementById('floorBtn').style.display = 'none';
+  document.getElementById('noteDelBtn').style.display =
+    (n.author === getUser()) ? 'block' : 'none';
+  document.getElementById('tabNote').style.display = 'none';   // 备注面板只有"评论"标签
+  switchTab('comment');
+}
+
+function switchTab(tab) {
+  if (notePanel && tab !== 'comment') return;   // 备注面板只有"评论"标签
+  curTab = tab;
+  document.getElementById('tabComment').classList.toggle('active', tab === 'comment');
+  document.getElementById('tabNote').classList.toggle('active', tab === 'note');
+  document.getElementById('visRow').style.display = tab === 'note' ? 'flex' : 'none';
+  document.getElementById('submitBtn').textContent = tab === 'comment' ? '发表评论' : '添加备注';
+  document.getElementById('cContent').placeholder = tab === 'comment'
+    ? '说说这个地点怎么样…'
+    : '给这个地点加个备忘：比如「周三下午人少」「3 号插座是坏的」';
+  renderTabBody();
+}
+
+function renderTabBody() {
+  const box = document.getElementById('tabBody');
+  if (notePanel) {   // 备注面板：展示备注的评论
+    const me = getUser();
+    box.innerHTML = (window._noteComms || []).map(c => {
+      // 删评权限：评论作者本人，或备注作者（楼主）
+      const canDel = me && (c.author === me || notePanel.author === me);
+      return `
+      <div class="comment">
+        <div class="c-head">
+          <b style="color:#4a5a75">${esc(c.author)}</b>
+          ${canDel ? `<span class="c-del" onclick="delNoteComment(${c.id})">删除</span>` : ''}
+          <span style="margin-left:auto">${fmtTime(c.created_at)}</span>
+        </div>
+        <div class="c-body">${esc(c.content)}</div>
+      </div>`;
+    }).join('') || '<div class="muted" style="padding:16px">还没有评论，来说两句</div>';
+    return;
+  }
+  if (curTab === 'comment') {
+    const me = getUser();
+    box.innerHTML = (window._comments || []).map(c => {
+      // 地点评论没有"楼主"概念：只有评论作者本人能删
+      const canDel = me && c.author === me;
+      return `
+      <div class="comment">
+        <div class="c-head">
+          <b style="color:#4a5a75">${esc(c.author)}</b>
+          ${canDel ? `<span class="c-del" onclick="delPoiComment(${c.id})">删除</span>` : ''}
+          <span style="margin-left:auto">${fmtTime(c.created_at)}</span>
+        </div>
+        <div class="c-body">${esc(c.content)}</div>
+      </div>`;
+    }).join('') || '<div class="muted" style="padding:16px">还没有评论，来抢沙发</div>';
+  } else {
+    box.innerHTML = (window._notes || []).map(n => `
+      <div class="note">
+        <div class="n-head">
+          <b style="color:#4a5a75">${esc(n.author)}</b>
+          <span class="badge-${n.visibility === 'private' ? 'red' : 'green'}">
+            ${n.visibility === 'private' ? '私密' : '公开'}</span>
+          <span style="margin-left:auto">${fmtTime(n.created_at)}</span>
+        </div>
+        <div class="n-body">${esc(n.content)}</div>
+      </div>`).join('') || '<div class="muted" style="padding:16px">暂无备注</div>';
+  }
+}
+
+/* ---------- 删评 ---------- */
+
+/* 重新拉取当前面板的评论并重绘 */
+async function reloadComments() {
+  const opt = getToken() ? { headers: { Authorization: 'Bearer ' + getToken() } } : {};
+  try {
+    if (notePanel) {
+      window._noteComms = await fetch(`${API}/map_notes/${notePanel.id}/comments`, opt)
+        .then(r => r.json());
+    } else if (currentPoi) {
+      window._comments = await fetch(`${API}/pois/${currentPoi.id}/comments`, opt)
+        .then(r => r.json());
+      loadPois();          // 顺带刷新列表上的评论数
+    }
+  } catch (e) { /* 忽略，保持旧列表 */ }
+  renderTabBody();
+}
+
+async function delPoiComment(cid) {
+  if (!currentPoi) return;
+  if (!confirm('确定删除这条评论吗？删除后不可恢复。')) return;
+  try {
+    await api(`/pois/${currentPoi.id}/comments/${cid}`, { method: 'DELETE' });
+    showToast('评论已删除');
+    await reloadComments();
+  } catch (e) { handleWriteError(e, null); }
+}
+
+async function delNoteComment(cid) {
+  if (!notePanel) return;
+  if (!confirm('确定删除这条评论吗？删除后不可恢复。')) return;
+  try {
+    await api(`/map_notes/${notePanel.id}/comments/${cid}`, { method: 'DELETE' });
+    showToast('评论已删除');
+    await reloadComments();
+  } catch (e) { handleWriteError(e, null); }
+}
+
+async function submitCurrent() {
+  if (notePanel) return submitNoteComment();   // 备注面板：给备注发评论
+  if (curTab === 'note') return submitNote();
+  const content = document.getElementById('cContent').value.trim();
+  if (!content || !currentPoi) return;
+  const author = document.getElementById('cAuthor').value.trim();
+  // ML② 内容安全：地点评论同样过一遍识别，被拦截时就地提示原因
+  try {
+    await api(`/pois/${currentPoi.id}/comments`, {
+      method: 'POST', body: JSON.stringify({ author, content }),
+    });
+    document.getElementById('cContent').value = '';
+    openDetail(currentPoi.id);
+    loadPois();
+  } catch (e) {
+    handleWriteError(e, null);
+  }
+}
+
+/* 备注面板里给备注发表评论 */
+async function submitNoteComment() {
+  const content = document.getElementById('cContent').value.trim();
+  if (!content || !notePanel) return;
+  const author = document.getElementById('cAuthor').value.trim();
+  try {
+    await api(`/map_notes/${notePanel.id}/comments`, {
+      method: 'POST', body: JSON.stringify({ author, content }),
+    });
+    document.getElementById('cContent').value = '';
+    loadNotes();
+    await openNotePanel(JSON.parse(JSON.stringify(notePanel)));   // 刷新评论区
+  } catch (e) { handleWriteError(e, null); }
+}
+
+async function submitNote() {
+  if (!requireLogin()) return;
+  const content = document.getElementById('cContent').value.trim();
+  if (!content || !currentPoi) return;
+  const visibility = document.getElementById('nVis').value;
+  try {
+    await api(`/pois/${currentPoi.id}/notes`, {
+      method: 'POST', body: JSON.stringify({ content, visibility }),
+    });
+    document.getElementById('cContent').value = '';
+    openDetail(currentPoi.id);
+    loadStats();
+  } catch (e) {
+    handleWriteError(e, null);
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+  document.getElementById('noteDelBtn').style.display = 'none';
+  notePanel = null;
+  clearHighlightMarker();   // 关闭详情时熄灭地点图标
+  clearNoteFocus();
+}
+
+/* 备注面板里删除自己的备注 */
+async function deleteNotePanel() {
+  if (!notePanel) return;
+  if (!confirm('确定删除这条备注吗？')) return;
+  try {
+    await api('/notes/' + notePanel.id, { method: 'DELETE' });
+    closeDetail();
+    loadNotes();
+    loadStats();
+    renderList();
+  } catch (e) { alert(e.message || '删除失败'); }
+}
+
+/* ---------- 步行导航 ---------- */
+async function startNav() {
+  let dest = null;
+  if (currentPoi && currentPoi.lat) dest = new TMap.LatLng(currentPoi.lat, currentPoi.lng);
+  else if (notePanel && notePanel.lat && notePanel.lng) dest = new TMap.LatLng(notePanel.lat, notePanel.lng);
+  if (!dest) return;
+  let from = startPos;
+  if (!from) from = await getMyLocation();
+  if (!from) {
+    choosingStart = true;
+    document.getElementById('chooseTip').style.display = 'block';
+    return;
+  }
+  doRoute(from, dest);
+}
+
+/* 点击定位按钮：定位并在图上显示我的位置 */
+async function locateMe() {
+  const btn = document.getElementById('locateBtn');
+  btn.style.opacity = '.45';
+  const pos = await getMyLocation();
+  btn.style.opacity = '1';
+  if (!pos) {
+    alert('定位失败：请检查浏览器定位权限（需要在 localhost 或 https 环境下才允许定位）');
+    return;
+  }
+  showMyLoc(pos);
+  map.setCenter(pos);
+}
+
+function getMyLocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        const [lat, lng] = wgs84ToGcj02(p.coords.latitude, p.coords.longitude);
+        const pos = new TMap.LatLng(lat, lng);
+        showMyLoc(pos);          // 定位成功即在图上标出我的位置
+        resolve(pos);
+      },
+      () => resolve(null),
+      { timeout: 6000, enableHighAccuracy: true });
+  });
+}
+
+function doRoute(from, to) {
+  const walking = new TMap.service.Walking({});
+  walking.search({ from, to })
+    .then(res => {
+      const route = (res.result && res.result.routes && res.result.routes[0]) || res.routes[0];
+      if (!route) throw new Error('未找到路线');
+      // polyline 为压缩坐标：前两位为绝对值，之后为增量（×1e6）
+      const coors = route.polyline.slice();
+      for (let i = 2; i < coors.length; i++) coors[i] = coors[i - 2] + coors[i] / 1e6;
+      const pl = [];
+      for (let i = 0; i < coors.length; i += 2) pl.push(new TMap.LatLng(coors[i], coors[i + 1]));
+      clearRoute(true);
+      routePolyline = new TMap.MultiPolyline({
+        map, styles: { line: new TMap.PolylineStyle({ color: '#1e6fd9', width: 6, borderWidth: 2,
+          borderColor: '#fff', lineCap: 'round' }) },
+        geometries: [{ id: 'route', styleId: 'line', paths: pl }],
+      });
+      const km = route.distance >= 1000 ? (route.distance / 1000).toFixed(2) + ' 公里'
+                                        : route.distance + ' 米';
+      document.getElementById('routeSummary').textContent =
+        `步行约 ${km} · 预计 ${route.duration} 分钟 → ${currentPoi ? currentPoi.name : ''}`;
+      document.getElementById('routeSteps').innerHTML =
+        (route.steps || []).map((s, i) => `${i + 1}. ${s.instruction}`).join('<br>') ||
+        '暂无分步指引';
+      document.getElementById('routeInfo').style.display = 'block';
+      map.easeTo({ bounds: boundsOf(pl) });
+    })
+    .catch(() => {
+      /* 站内 Walking 路线服务需要腾讯密钥（代理占位符环境或未填 key 时必然失败）。
+         降级：地图内绘制"直线参考路线"，展示直线距离与预估步行时间，不跳转、不报错。
+         填了 TMAP_KEY 后此处不会再触发，会直接画出真实路网步行路线。 */
+      drawStraightFallback(from, to);
+    });
+}
+
+/* 无密钥时的站内兜底：起点→终点直线参考路线（虚线 + 距离/耗时估算） */
+function drawStraightFallback(from, to) {
+  clearRoute(true);
+  routePolyline = new TMap.MultiPolyline({
+    map, styles: { line: new TMap.PolylineStyle({ color: '#1e6fd9', width: 5,
+      borderWidth: 2, borderColor: '#fff', lineCap: 'round' }) },
+    geometries: [{ id: 'route', styleId: 'line', paths: [from, to] }],
+  });
+  // Haversine 球面直线距离（米）
+  const R = 6371000, rad = d => d * Math.PI / 180;
+  const dLat = rad(to.getLat() - from.getLat());
+  const dLng = rad(to.getLng() - from.getLng());
+  const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(rad(from.getLat())) * Math.cos(rad(to.getLat())) * Math.sin(dLng / 2) ** 2;
+  const dist = 2 * R * Math.asin(Math.sqrt(a));
+  const mins = Math.max(1, Math.round(dist / 80));   // 按步行 80 米/分钟估算
+  const km = dist >= 1000 ? (dist / 1000).toFixed(2) + ' 公里' : Math.round(dist) + ' 米';
+  document.getElementById('routeSummary').textContent =
+    `直线参考约 ${km} · 步行约 ${mins} 分钟 → ${currentPoi ? currentPoi.name : (notePanel ? '该备注位置' : '')}`;
+  document.getElementById('routeSteps').innerHTML =
+    '⚠ 当前为直线参考路线。<br>真实步行路线服务暂不可用（可能当日免费额度已用完，次日自动恢复），恢复后再点一次导航即可。';
+  document.getElementById('routeInfo').style.display = 'block';
+  map.easeTo({ bounds: boundsOf([from, to]) });
+}
+
+function boundsOf(points) {
+  const bounds = new TMap.LatLngBounds();
+  points.forEach(p => bounds.extend(p));
+  return bounds;
+}
+
+function clearRoute(keep) {
+  if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+  if (!keep) {
+    if (startMarker) { startMarker.setMap(null); startMarker = null; }
+    startPos = null;
+    document.getElementById('routeInfo').style.display = 'none';
+  }
+}
+
+/* ---------- 任意点备注标注 ---------- */
+function noteDotIcon(privateNote) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6" fill="${privateNote ? '#8a97ad' : '#e6891e'}"
+      stroke="#fff" stroke-width="2"/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+function startAddNote() {
+  if (!requireLogin()) return;
+  addingNote = true;
+  document.getElementById('noteTip').style.display = 'block';
+}
+
+function closeNoteCreate() {
+  clearNotePick();
+  notePos = null;
+  document.getElementById('noteCreateModal').classList.remove('open');
+}
+
+/* 选错位置：回到地图重新点选 */
+function rePickNote() {
+  clearNotePick();
+  notePos = null;
+  document.getElementById('noteCreateModal').classList.remove('open');
+  addingNote = true;
+  document.getElementById('noteTip').style.display = 'block';
+}
+
+async function submitMapNote() {
+  const content = document.getElementById('noteContent').value.trim();
+  if (!content || !notePos) return;
+  try {
+    await api('/map_notes', {
+      method: 'POST',
+      body: JSON.stringify({
+        content, visibility: document.getElementById('noteVis').value,
+        lat: notePos.getLat(), lng: notePos.getLng(),
+      }),
+    });
+    document.getElementById('noteContent').value = '';
+    closeNoteCreate();   // 内部会清除临时图钉
+    loadNotes();
+    loadStats();
+    renderList();
+  } catch (e) { handleWriteError(e, null); }
+}
+
+async function loadNotes() {
+  try {
+    mapNotes = await fetch(`${API}/map_notes`,
+      getToken() ? { headers: { Authorization: 'Bearer ' + getToken() } } : {}).then(r => r.json());
+  } catch (e) { mapNotes = []; return; }
+  renderNotesLayer();
+}
+
+/* 备注点默认不渲染到地图（地图保持清爽），备注改由左侧列表搜索结果点击查看。
+   如需恢复地图上的备注圆点，恢复下方的 Multimarker 渲染即可。 */
+function renderNotesLayer() {
+  if (notesLayer) { notesLayer.setMap(null); notesLayer = null; }
+  return;
+}
+
+/* 点击备注后，在地图上用红色图钉标出该备注的具体位置 */
+function highlightNote(n) {
+  clearNoteFocus();
+  if (!n || !n.lat || !n.lng) return;
+  noteFocusMarker = new TMap.MultiMarker({
+    map,
+    styles: { nf: new TMap.MarkerStyle({ width: 26, height: 34,
+      src: markerIcon('#e45656'), anchor: { x: 13, y: 34 } }) },
+    geometries: [{ id: 'note-focus', styleId: 'nf',
+      position: new TMap.LatLng(n.lat, n.lng) }],
+  });
+}
+function clearNoteFocus() {
+  if (noteFocusMarker) { noteFocusMarker.setMap(null); noteFocusMarker = null; }
+}
+
+function openNoteById(id) {
+  const n = mapNotes.find(x => x.id === id) ||
+            (window._lastSearchNotes || []).find(x => x.id === id);
+  if (!n) return;
+  if (n.lat && n.lng) {
+    map.setCenter(new TMap.LatLng(n.lat, n.lng));
+    highlightNote(n);   // 在地图上用橙色图钉标出该备注位置
+  }
+  openNotePanel(n);   // 备注在右侧详情面板展示，支持评论
+}
+
+function openNoteDetail(n) {
+  currentNote = n;
+  document.getElementById('ndMeta').textContent =
+    `${n.author} · ${fmtTime(n.created_at)} · ` +
+    (n.poi_name ? n.poi_name : '自由标注') +
+    (n.visibility === 'private' ? ' · 私密' : ' · 公开');
+  document.getElementById('ndBody').textContent = n.content;
+  document.getElementById('ndDelete').style.display = (n.author === getUser()) ? 'block' : 'none';
+  document.getElementById('noteDetailModal').classList.add('open');
+}
+function closeNoteDetail() {
+  document.getElementById('noteDetailModal').classList.remove('open');
+  clearNoteFocus();   // 关闭时清除备注定位图钉
+}
+
+async function deleteCurrentNote() {
+  if (!currentNote) return;
+  try {
+    await api('/notes/' + currentNote.id, { method: 'DELETE' });
+    closeNoteDetail();
+    loadNotes();
+    loadStats();
+    renderList();
+  } catch (e) { alert(e.message || '删除失败'); }
+}
+
+/* ---------- 楼层平面图 ---------- */
+let curFloor = 1;
+function openFloorModal() {
+  if (!currentPoi) return;
+  document.getElementById('floorTitle').textContent = currentPoi.name + ' 楼层平面图';
+  document.getElementById('floorModal').classList.add('open');
+  curFloor = 1;
+  renderFloorTabs(); renderFloorSvg();
+}
+function closeFloorModal() { document.getElementById('floorModal').classList.remove('open'); }
+function renderFloorTabs() {
+  document.getElementById('floorTabs').innerHTML = [1, 2].map(f =>
+    `<span class="floor-tab ${f === curFloor ? 'active' : ''}" onclick="switchFloor(${f})">${f} 层</span>`).join('');
+}
+function switchFloor(f) { curFloor = f; renderFloorTabs(); renderFloorSvg(); }
+function renderFloorSvg() {
+  const base = curFloor === 1 ? 100 : 200;
+  const parts = [
+    `<rect x="20" y="100" width="640" height="60" fill="#f5f0e1" stroke="#cbbf9a"/>`,
+    `<text x="330" y="135" font-size="13" fill="#8a7d52" text-anchor="middle">走 廊</text>`,
+    `<rect x="20" y="180" width="60" height="60" fill="#e8edf4" stroke="#9aa8bf"/>`,
+    `<text x="50" y="214" font-size="11" fill="#5b6b87" text-anchor="middle">楼梯</text>`,
+    `<rect x="600" y="180" width="60" height="60" fill="#e8edf4" stroke="#9aa8bf"/>`,
+    `<text x="630" y="214" font-size="11" fill="#5b6b87" text-anchor="middle">楼梯</text>`,
+  ];
+  for (let i = 0; i < 5; i++) {
+    const no = base + i + 1, x = 20 + i * 128;
+    parts.push(`<g class="room" onclick="openRoom('1-${no}教室')">
+      <rect x="${x + 2}" y="20" width="124" height="70" rx="4"/>
+      <text x="${x + 64}" y="60" text-anchor="middle">1-${no}</text></g>`);
+  }
+  for (let i = 0; i < 5; i++) {
+    const no = base + i + 6, x = 84 + i * 128;
+    if (x + 126 > 600) break;
+    parts.push(`<g class="room" onclick="openRoom('1-${no}教室')">
+      <rect x="${x + 2}" y="170" width="124" height="70" rx="4"/>
+      <text x="${x + 64}" y="210" text-anchor="middle">1-${no}</text></g>`);
+  }
+  document.getElementById('floorSvg').innerHTML = parts.join('');
+}
+function openRoom(name) {
+  const id = roomIdMap[name];
+  closeFloorModal();
+  if (id) openDetail(id);
+}
+
+/* ---------- 数据装载 ---------- */
+async function loadPois() {
+  try {
+    pois = await fetch(`${API}/pois`).then(r => r.json());
+    document.getElementById('banner').classList.remove('show');
+  } catch (e) {
+    document.getElementById('banner').classList.add('show');
+    return;
+  }
+  renderList();   // 地图不再默认铺满图标，改为选中地点时才点亮
+}
+
+async function loadStats() {
+  try {
+    const s = await fetch(`${API}/stats`).then(r => r.json());
+    document.getElementById('subbar').innerHTML =
+      `<span>地点 ${s.poi_count}</span>
+       <span>评论 ${s.comment_count}</span>
+       <span>备注 ${s.note_count}</span>
+       <span>失物招领待处理 ${s.lostfound_open}</span>
+       <span>论坛帖 ${s.post_count}</span>`;
+  } catch (e) { /* 忽略 */ }
+}
+
+document.getElementById('searchInput').addEventListener('input', renderList);
+renderHeader('map.html');
+injectAuthModal();
+initMap();
+renderCats();
+loadPois();
+loadNotes();
+loadStats();
+</script>
+</body>
+</html>

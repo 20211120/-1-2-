@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>失物招领 · 南航评论区</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { padding:0 0 30px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 20px; }
+  .top { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .top h2 { font-size:18px; font-weight:600; color:#16294a; display:flex; align-items:center; gap:8px; }
+  .top h2 svg { width:20px; height:20px; color:#164084; }
+  .search { flex:1; min-width:180px; padding:10px 14px; border:1px solid #e6ebf3;
+            border-radius:12px; font-size:13px; outline:none; transition:.15s; background:#fff; }
+  .search:focus { border-color:#164084; box-shadow:0 0 0 3px rgba(22,64,132,.08); }
+  .filters { display:flex; gap:8px; margin-bottom:16px; }
+  .filters span { font-size:13px; padding:6px 16px; border-radius:999px; background:#fff;
+                  color:#4a5a75; cursor:pointer; border:1px solid #e6ebf3; transition:.15s; }
+  .filters span:hover { border-color:#c9d6e8; }
+  .filters span.active { background:#164084; color:#fff; border-color:#164084; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px; }
+  .item { background:#fff; border-radius:16px; overflow:hidden; cursor:pointer;
+          border:1px solid #eef2f8; box-shadow:0 4px 16px rgba(22,64,132,.06); transition:.18s; }
+  .item:hover { box-shadow:0 10px 24px rgba(22,64,132,.12); transform:translateY(-2px); }
+  .item .thumb { height:140px; background:#f6f8fc; display:flex; align-items:center;
+                 justify-content:center; overflow:hidden; color:#a9b7c9; font-size:12px; }
+  .item .thumb svg { width:26px; height:26px; }
+  .item .thumb img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+  .item .body { padding:12px 14px 14px; }
+  .item .title { font-size:14px; font-weight:600; color:#16294a; margin-bottom:6px; }
+  .item .meta { font-size:12px; color:#94a3b8; display:flex; gap:6px; flex-wrap:wrap; }
+  .resolved { opacity:.55; }
+  .empty { text-align:center; color:#94a3b8; padding:40px; font-size:13px; }
+
+  .modal { display:none; position:fixed; inset:0; background:rgba(12,24,48,.5); z-index:100;
+           align-items:center; justify-content:center; }
+  .modal.open { display:flex; }
+  .box { background:#fff; border-radius:18px; padding:24px; width:460px; max-width:94vw;
+         max-height:88vh; overflow-y:auto; border:1px solid #eef2f8;
+         box-shadow:0 24px 56px rgba(15,32,64,.28); }
+  .box h3 { font-size:16px; font-weight:600; color:#16294a; margin-bottom:12px; }
+  .box label { font-size:12px; color:#5b6b87; display:block; margin:10px 0 4px; }
+  .box input,.box textarea,.box select { width:100%; padding:10px 12px; border:1px solid #e6ebf3;
+        border-radius:10px; font-size:13px; outline:none; font-family:inherit; }
+  .box input:focus,.box textarea:focus,.box select:focus { border-color:#164084; }
+  .box textarea { height:80px; resize:none; }
+  .radio-row { display:flex; gap:14px; font-size:13px; color:#26344d; margin-top:6px; }
+  .box .actions { display:flex; gap:8px; margin-top:16px; }
+  .box .actions button { flex:1; padding:10px; border-radius:10px; border:none; cursor:pointer;
+                         font-size:14px; }
+  .detail-img { width:100%; border-radius:10px; margin:10px 0; }
+  .kv { font-size:13px; color:#5b6b87; margin:6px 0; }
+</style>
+</head>
+<body>
+<div id="header-root"></div>
+<div class="wrap">
+  <div class="top">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="7.5" width="15" height="12" rx="3"/><path d="M9 7.5V5.8A3 3 0 0 1 15 5.8v1.7"/><path d="M4.5 12.5h15"/></svg>失物招领</h2>
+    <input class="search" id="searchInput" placeholder="搜索标题 / 内容 / 地点">
+    <button class="btn-primary" onclick="openCreate()">＋ 发布信息</button>
+  </div>
+  <div class="filters">
+    <span class="active" onclick="setKind('')">全部</span>
+    <span onclick="setKind('lost')">寻物启事</span>
+    <span onclick="setKind('found')">失物招领</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">暂无相关信息</div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal" id="detailModal">
+  <div class="box">
+    <h3 id="dTitle"></h3>
+    <div id="dBody"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeDetail()">关闭</button>
+      <button class="btn-danger" id="dResolve" onclick="resolveItem()" style="display:none">标记已解决</button>
+    </div>
+  </div>
+</div>
+
+<!-- 发布弹窗 -->
+<div class="modal" id="createModal">
+  <div class="box">
+    <h3>发布失物信息</h3>
+    <label>类型</label>
+    <div class="radio-row">
+      <label><input type="radio" name="kind" value="lost" checked> 寻物（我丢了东西）</label>
+      <label style="margin-left:8px"><input type="radio" name="kind" value="found"> 招领（我捡到东西）</label>
+    </div>
+    <label>标题</label>
+    <input id="fTitle" placeholder="如：丢失一串钥匙（带飞机挂件）">
+    <label>详细描述</label>
+    <textarea id="fContent" placeholder="丢失/捡到的时间、特征、细节…"></textarea>
+    <label>地点</label>
+    <select id="fPoi"><option value="">（请选择校园地点）</option></select>
+    <input id="fLoc" placeholder="或手动填写地点，如：一号楼 1-205" style="margin-top:6px">
+    <label>联系方式（选填，仅详情页展示）</label>
+    <input id="fContact" placeholder="如：QQ / 微信 / 手机号">
+    <label>失物图片（选填）</label>
+    <input type="file" id="fImage" accept="image/*">
+    <div class="mnotice" id="lfNotice"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeCreate()">取消</button>
+      <button class="btn-primary" onclick="submitItem()">发布</button>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+let items = [], kind = '', currentId = null;
+
+function setKind(k) {
+  kind = k;
+  document.querySelectorAll('.filters span').forEach((el, i) =>
+    el.classList.toggle('active', (['', 'lost', 'found'][i] === k)));
+  render();
+}
+
+function card(it) {
+  const img = it.image
+    ? `<img src="${UPLOAD_BASE}${it.image}" alt="">`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17l4.5-4 3.5 3 2.5-2 4 3.5"/></svg>`;
+  return `<div class="item ${it.status === 'resolved' ? 'resolved' : ''}" onclick="openDetail(${it.id})">
+    <div class="thumb">${img}</div>
+    <div class="body">
+      <div class="title">${esc(it.title)}</div>
+      <div class="meta">
+        <span class="badge-${it.kind === 'lost' ? 'red' : 'green'}">
+          ${it.kind === 'lost' ? '寻物' : '招领'}</span>
+        <span>${esc(it.location || '未填写')}</span>
+        <span>${it.status === 'resolved' ? '已解决' : ''}</span>
+      </div>
+      <div class="meta" style="margin-top:4px">${esc(it.author)} · ${fmtTime(it.created_at)}</div>
+    </div></div>`;
+}
+
+function render() {
+  const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+  const shown = items.filter(it =>
+    (!kind || it.kind === kind) &&
+    (!kw || (it.title + it.content + it.location).toLowerCase().includes(kw)));
+  document.getElementById('grid').innerHTML = shown.map(card).join('');
+  document.getElementById('empty').style.display = shown.length ? 'none' : 'block';
+}
+
+function openDetail(id) {
+  const it = items.find(x => x.id === id);
+  if (!it) return;
+  currentId = id;
+  document.getElementById('dTitle').textContent = it.title;
+  document.getElementById('dBody').innerHTML = `
+    ${it.image ? `<img class="detail-img" src="${UPLOAD_BASE}${it.image}">` : ''}
+    <div class="kv"><span class="badge-${it.kind === 'lost' ? 'red' : 'green'}">
+      ${it.kind === 'lost' ? '寻物启事' : '失物招领'}</span>
+      ${it.status === 'resolved' ? '<span class="badge-green">已解决</span>' : ''}</div>
+    <div class="kv">地点：${esc(it.location || '未填写')}</div>
+    <div class="kv">发布人：${esc(it.author)}</div>
+    <div class="kv">时间：${fmtTime(it.created_at)}</div>
+    ${it.contact ? `<div class="kv">联系方式：${esc(it.contact)}</div>` : ''}
+    <div class="kv" style="margin-top:10px;color:#333c4e;line-height:1.7">${esc(it.content)}</div>`;
+  document.getElementById('dResolve').style.display =
+    (it.author === getUser() && it.status === 'open') ? 'block' : 'none';
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailModal').classList.remove('open'); }
+
+async function resolveItem() {
+  try {
+    await api(`/lostfound/${currentId}/resolve`, { method: 'POST' });
+    closeDetail();
+    load();
+  } catch (e) { alert(e.message || '操作失败'); }
+}
+
+function openCreate() {
+  if (!requireLogin()) return;
+  document.getElementById('createModal').classList.add('open');
+}
+function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
+
+async function submitItem() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('请填写标题'); return; }
+  const kindVal = document.querySelector('input[name=kind]:checked').value;
+  const content = document.getElementById('fContent').value.trim();
+  const poiSel = document.getElementById('fPoi');
+  const poiId = poiSel.value;
+  const location = document.getElementById('fLoc').value.trim() ||
+                   (poiSel.options[poiSel.selectedIndex] &&
+                    poiSel.value ? poiSel.options[poiSel.selectedIndex].text : '');
+  const contact = document.getElementById('fContact').value.trim();
+  const fd = new FormData();
+  fd.append('kind', kindVal); fd.append('title', title); fd.append('content', content);
+  fd.append('location', location); fd.append('contact', contact);
+  if (poiId) fd.append('poi_id', poiId);
+  const file = document.getElementById('fImage').files[0];
+  if (file) fd.append('image', file);
+  const notice = document.getElementById('lfNotice');
+  renderModeration(notice, null);
+  try {
+    const res = await fetch(API + '/lostfound', {
+      method: 'POST',
+      headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {},
+      body: fd,
+    });
+    const r = await res.json();
+    if (res.status >= 400) {
+      throw Object.assign(new Error(r.error || '发布失败'), { moderation: r.moderation });
+    }
+    closeCreate();
+    ['fTitle','fContent','fLoc','fContact','fImage'].forEach(i => document.getElementById(i).value = '');
+    // ML① 发布后立刻刷新通知红点：匹配到相似信息时铃铛马上有提示
+    if (r.match_count) {
+      await refreshNotify();
+    }
+    await load();
+  } catch (e) {
+    handleWriteError(e, notice);
+  }
+}
+
+async function load() {
+  try {
+    items = await api('/lostfound');
+  } catch (e) {
+    document.getElementById('grid').innerHTML =
+      `<div class="empty">无法连接后端：请启动 backend/app.py 后刷新</div>`;
+    return;
+  }
+  render();
+  // 从通知中心点进来：lostfound.html?open=<id> 直接打开那条信息
+  const m = location.search.match(/[?&]open=(\d+)/);
+  if (m) {
+    const id = parseInt(m[1], 10);
+    if (items.some(x => x.id === id)) openDetail(id);
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+async function loadPoiOptions() {
+  try {
+    const pois = await api('/pois');
+    const sel = document.getElementById('fPoi');
+    sel.innerHTML = '<option value="">（请选择校园地点）</option>' +
+      pois.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('') +
+      '<option value="">一号楼教室（详见地图模块）</option>';
+  } catch (e) { /* 忽略 */ }
+}
+
+document.getElementById('searchInput').addEventListener('input', render);
+renderHeader('lostfound.html');
+injectAuthModal();
+load();
+loadPoiOptions();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+[AUTH] 注册 -> 409 {"error": "用户名已被注册"}
+[AUTH] 登录 -> 200 token=True
+[AUTH] 错误密码 -> 401 {'error': '用户名或密码错误'}
+[NOTE] 发备注 -> 201/201 ids=10,11
+[NOTE] 匿名可见=3 登录可见=4 (私密应仅登录可见)
+[NOTE] 删除自己备注 -> 200 {'ok': True}
+[NOTE] 未登录删除 -> 403 {'error': '只能删除自己的备注'}
+[LF] 发帖 -> 201 {'id': 9, 'match_count': 2, 'matches': [{'author': 'ml_selfcheck', 'id': 7, 'kind': 'found', 'level': '中', 'notified': False, 'reasons': ['地点不同', '相差 1 分钟发布', '同属「校园卡」类物品，类别相互印证'], 'score': 0.4853, 'score_pct': 49, 'title': '一食堂捡到校园卡'}, {'author': '热心人', 'id': 2, 'kind': 'found', 'level': '低', 'notified': False, 'reasons': ['地点不同', '相差 5.4 天发布', '同属「校园卡」类物品，类别相互印证', '发布先后顺序相反'], 'score': 0.3886, 'score_pct': 39, 'title': '捡到一张校园卡'}], 'moderation': {'action': 'allow', 'label': 'normal', 'label_name': '正常内容', 'matched': [], 'message': '', 'model': {'centroid': {'ad': 0.1307, 'flame': 0.2014, 'normal': 0.3734, 'uncivil': 0.2072}, 'rule': {'ad': 0.0, 'flame': 0.0, 'uncivil': 0.0}}, 'risk': 0.2072, 'scores': {'ad': 0.1307, 'flame': 0.2014, 'normal': 0.3734, 'uncivil': 0.2072}, 'suggestion': ''}, 'notified': 0}
+[LF] 寻物列表 -> 200 共6条 首条=丢了校园卡
+[LF] 未登录发帖 -> 401 {'error': '请先登录后再发帖'}
+[LF] 标记已解决 -> 200 {'ok': True}
+[POST] 发帖 -> 201 analysis={"sentiment": 1, "sentiment_label": "", "sentiment_prob": 0.5, "tags": []}
+[POST] 详情 -> 评论1条 likes=1 tags=[]
+[POST] 搜索'图书馆' -> ['图书馆占座', '推荐一个通宵自习的好去处', '期末周图书馆占座现象大家怎么看']
+[STATS] {"classroom_count": 20, "comment_count": 10, "lf_match_count": 3, "lostfound_open": 6, "market_open": 10, "moderation_acc": 0.8537, "moderation_blocked": 7, "moderation_macro_f1": 0.8374, "moderation_model": "TF-IDF 类质心(1-2gram)", "moderation_review": 2, "moderation_samples": 164, "note_count": 7, "notification_count": 6, "poi_count": 9, "post_count": 14, "user_count": 3}
+[MAPNOTE] 自由标注 -> 201 {'id': 12, 'moderation': {'action': 'allow', 'label': 'normal', 'label_name': '正常内容', 'matched': [], 'message': '', 'model': {'centroid': {'ad': 0.1933, 'flame': 0.256, 'normal': 0.2987, 'uncivil': 0.252}, 'rule': {'ad': 0.0, 'flame': 0.0, 'uncivil': 0.0}}, 'risk': 0.256, 'scores': {'ad': 0.1933, 'flame': 0.256, 'normal': 0.2987, 'uncivil': 0.252}, 'suggestion': ''}}
+[MAPNOTE] 匿名可见自由标注=4 登录可见=6（私密应+1）
+[SEARCH] 搜'最高的楼' -> pois=0 notes=[('全校最高的楼，爬楼锻', '图书馆')]
+[SEARCH] 匿名搜私密备注 -> notes=0（应为0）
+[SEARCH] 本人搜私密备注 -> notes=2（应为1）
+[MARKET] 发布 -> 201 {'id': 12, 'moderation': {'action': 'allow', 'label': 'normal', 'label_name': '正常内容', 'matched': [], 'message': '', 'model': {'centroid': {'ad': 0.1262, 'flame': 0.1882, 'normal': 0.4097, 'uncivil': 0.1918}, 'rule': {'ad': 0.0, 'flame': 0.0, 'uncivil': 0.0}}, 'risk': 0.1918, 'scores': {'ad': 0.1262, 'flame': 0.1882, 'normal': 0.4097, 'uncivil': 0.1918}, 'suggestion': ''}}
+[MARKET] 出售-书籍 -> 共5条 首条=出二手高数教材 ¥15.0
+[MARKET] 未登录发布 -> 401 {'error': '请先登录后再发布'}
+[MARKET] 标记已成交 -> 200 {'ok': True}
+[OK] 平台全链路测试通过

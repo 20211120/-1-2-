@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>二手市集 · 南航评论区</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { padding-bottom:30px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:24px 20px; }
+  .top { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .top h2 { font-size:18px; font-weight:600; color:#16294a; display:flex; align-items:center; gap:8px; }
+  .top h2 svg { width:20px; height:20px; color:#164084; }
+  .search { flex:1; min-width:180px; padding:10px 14px; border:1px solid #e6ebf3;
+            border-radius:12px; font-size:13px; outline:none; transition:.15s; background:#fff; }
+  .search:focus { border-color:#164084; box-shadow:0 0 0 3px rgba(22,64,132,.08); }
+  .filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .filters span { font-size:13px; padding:6px 16px; border-radius:999px; background:#fff;
+                  color:#4a5a75; cursor:pointer; border:1px solid #e6ebf3; transition:.15s; }
+  .filters span:hover { border-color:#c9d6e8; }
+  .filters span.active { background:#164084; color:#fff; border-color:#164084; }
+  .filters .divider { width:1px; background:#e6ebf3; margin:0 4px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px; }
+  .item { background:#fff; border-radius:16px; overflow:hidden; cursor:pointer;
+          border:1px solid #eef2f8; box-shadow:0 4px 16px rgba(22,64,132,.06); transition:.18s; }
+  .item:hover { box-shadow:0 10px 24px rgba(22,64,132,.12); transform:translateY(-2px); }
+  .item .thumb { height:140px; background:#f6f8fc; display:flex; align-items:center;
+                 justify-content:center; overflow:hidden; color:#a9b7c9; font-size:12px; }
+  .item .thumb svg { width:26px; height:26px; }
+  .item .thumb img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+  .item .body { padding:12px 14px 14px; }
+  .item .title { font-size:14px; font-weight:600; color:#16294a; margin-bottom:6px; }
+  .price { color:#164084; font-weight:700; font-size:15px; }
+  .item .meta { font-size:12px; color:#94a3b8; display:flex; gap:6px; flex-wrap:wrap;
+                margin-top:4px; align-items:center; }
+  .done { opacity:.55; }
+  .empty { text-align:center; color:#94a3b8; padding:40px; font-size:13px; }
+
+  .modal { display:none; position:fixed; inset:0; background:rgba(12,24,48,.5); z-index:100;
+           align-items:center; justify-content:center; }
+  .modal.open { display:flex; }
+  .box { background:#fff; border-radius:18px; padding:24px; width:460px; max-width:94vw;
+         max-height:88vh; overflow-y:auto; border:1px solid #eef2f8;
+         box-shadow:0 24px 56px rgba(15,32,64,.28); }
+  .box h3 { font-size:16px; font-weight:600; color:#16294a; margin-bottom:12px; }
+  .box label { font-size:12px; color:#5b6b87; display:block; margin:10px 0 4px; }
+  .box input,.box textarea,.box select { width:100%; padding:10px 12px; border:1px solid #e6ebf3;
+        border-radius:10px; font-size:13px; outline:none; font-family:inherit; }
+  .box input:focus,.box textarea:focus,.box select:focus { border-color:#164084; }
+  .box textarea { height:80px; resize:none; }
+  .radio-row { display:flex; gap:14px; font-size:13px; color:#26344d; margin-top:6px; }
+  .box .actions { display:flex; gap:8px; margin-top:16px; }
+  .box .actions button { flex:1; padding:10px; border-radius:10px; border:none; cursor:pointer;
+                         font-size:14px; }
+  .detail-img { width:100%; border-radius:10px; margin:10px 0; }
+  .kv { font-size:13px; color:#5b6b87; margin:6px 0; }
+</style>
+</head>
+<body>
+<div id="header-root"></div>
+<div class="wrap">
+  <div class="top">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8h11l1 12h-13l1-12z"/><path d="M9.5 8V6.2a2.5 2.5 0 0 1 5 0V8"/></svg>二手市集</h2>
+    <input class="search" id="searchInput" placeholder="搜索商品 / 描述">
+    <button class="btn-primary" onclick="openCreate()">＋ 发布</button>
+  </div>
+  <div class="filters" id="kindFilters">
+    <span class="active" onclick="setKind('')">全部</span>
+    <span onclick="setKind('sell')">出售</span>
+    <span onclick="setKind('want')">求购</span>
+  </div>
+  <div class="sem-bar">
+    <span class="sem-toggle on" id="semMode" onclick="toggleSemMode()">✓ 语义检索</span>
+    <span class="sem-hint" id="semHint">搜「笔记本」也能找到“电脑”，搜「单车」能找到“自行车”——
+      同义词、错别字与语料学到的相关词都会自动扩展。</span>
+  </div>
+  <div class="filters" id="catFilters"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">暂无相关商品</div>
+</div>
+
+<!-- 详情 -->
+<div class="modal" id="detailModal">
+  <div class="box">
+    <h3 id="dTitle"></h3>
+    <div id="dBody"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeDetail()">关闭</button>
+      <button class="btn-danger" id="dDone" onclick="doneItem()" style="display:none">标记已成交/已求到</button>
+    </div>
+  </div>
+</div>
+
+<!-- 发布 -->
+<div class="modal" id="createModal">
+  <div class="box">
+    <h3>发布二手信息</h3>
+    <label>类型</label>
+    <div class="radio-row">
+      <label><input type="radio" name="mkind" value="sell" checked> 出售</label>
+      <label style="margin-left:8px"><input type="radio" name="mkind" value="want"> 🛒 求购</label>
+    </div>
+    <label>分类</label>
+    <select id="fCat">
+      <option>书籍</option><option>电子产品</option><option>生活用品</option>
+      <option>票券</option><option>其他</option>
+    </select>
+    <label>标题</label>
+    <input id="fTitle" placeholder="如：考研数学全书（九五新）">
+    <label>价格（元，求购可不填）</label>
+    <input id="fPrice" type="number" min="0" step="0.5" placeholder="如：25">
+    <label>详细描述</label>
+    <textarea id="fContent" placeholder="成色、购买时间、交易方式、自取地点…"></textarea>
+    <label>联系方式</label>
+    <input id="fContact" placeholder="QQ / 微信 / 手机号">
+    <label>商品图片（选填）</label>
+    <input type="file" id="fImage" accept="image/*">
+    <div class="mnotice" id="mkNotice"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeCreate()">取消</button>
+      <button class="btn-primary" onclick="submitItem()">发布</button>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+const MK_CATS = ['', '书籍', '电子产品', '生活用品', '票券', '其他'];
+let items = [], kind = '', cat = '', currentId = null;
+let semMode = true, semItems = null, searchTimer = null, lastQuery = '';
+
+function renderCatFilters() {
+  document.getElementById('catFilters').innerHTML = MK_CATS.map(c =>
+    `<span class="${c === cat ? 'active' : ''}" onclick="setCat('${c}')">${c || '全部分类'}</span>`).join('');
+}
+function setKind(k) {
+  kind = k;
+  document.querySelectorAll('#kindFilters span').forEach((el, i) =>
+    el.classList.toggle('active', (['', 'sell', 'want'][i] === k)));
+  if (semItems) doSearch(); else render();
+}
+function setCat(c) { cat = c; renderCatFilters(); if (semItems) doSearch(); else render(); }
+
+/* ---------- ML③ 语义检索开关与查询 ---------- */
+function toggleSemMode() {
+  semMode = !semMode;
+  const el = document.getElementById('semMode');
+  el.className = 'sem-toggle' + (semMode ? ' on' : '');
+  el.textContent = semMode ? '✓ 语义检索' : '精确匹配';
+  document.getElementById('semHint').innerHTML = semMode
+    ? '搜「笔记本」也能找到“电脑”，搜「单车」能找到“自行车”——同义词、错别字与语料学到的相关词都会自动扩展。'
+    : '当前为关键词精确匹配：只在标题 / 描述里查找完全相同的字，用于和语义检索做对比。';
+  doSearch();
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 320);
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  lastQuery = q;
+  if (!q || !semMode) {
+    semItems = null;
+    document.getElementById('semHint').innerHTML = semMode
+      ? '搜「笔记本」也能找到“电脑”，搜「单车」能找到“自行车”——同义词、错别字与语料学到的相关词都会自动扩展。'
+      : '当前为关键词精确匹配：只在标题 / 描述里查找完全相同的字，用于和语义检索做对比。';
+    render();
+    return;
+  }
+  try {
+    const query = `/market/search?q=${encodeURIComponent(q)}` +
+      (kind ? `&kind=${kind}` : '') + (cat ? `&category=${encodeURIComponent(cat)}` : '');
+    const r = await api(query);
+    if (q !== lastQuery) return;          // 输入太快，丢弃过期响应
+    semItems = r.items;
+    const ex = (r.explain || []).join('；');
+    document.getElementById('semHint').innerHTML =
+      `语义扩展：${ex ? esc(ex) : '（本次查询无需扩展）'}` +
+      `<br>命中 <b>${r.items.length}</b> 件商品（索引商品 ${r.index_docs} 件，共现语料 ${r.corpus_docs} 篇）`;
+  } catch (e) {
+    semItems = null;
+    showToast(e.message || '检索失败', 'error');
+  }
+  render();
+}
+
+function card(it) {
+  const img = it.image ? `<img src="${UPLOAD_BASE}${it.image}" alt="">`
+                       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;color:#a9b7c9"><rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17l4.5-4 3.5 3 2.5-2 4 3.5"/></svg>`;
+  const price = it.price != null ? `<span class="price">¥${it.price}</span>`
+                                 : `<span class="muted">价格面议</span>`;
+  const score = it.score_pct
+    ? `<span class="sem-score">相关度 ${it.score_pct}%</span>` : '';
+  const terms = (it.matched_terms && it.matched_terms.length)
+    ? `<div class="sem-terms">语义命中：<b>${esc(it.matched_terms.join('、'))}</b></div>` : '';
+  return `<div class="item ${it.status === 'done' ? 'done' : ''}" onclick="openDetail(${it.id})">
+    <div class="thumb">${img}</div>
+    <div class="body">
+      <div class="title">${esc(it.title)}</div>
+      ${price} ${score}
+      <div class="meta">
+        <span class="badge-${it.kind === 'sell' ? 'red' : 'green'}">
+          ${it.kind === 'sell' ? '出售' : '求购'}</span>
+        <span class="badge-green">${esc(it.category)}</span>
+        ${it.status === 'done' ? '<span>已完成</span>' : ''}
+      </div>
+      <div class="meta">${esc(it.author)} · ${fmtTime(it.created_at)}</div>
+      ${terms}
+    </div></div>`;
+}
+
+function render() {
+  const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+  let shown;
+  if (semMode && kw && semItems) {
+    // 语义检索模式：结果已由后端按相关度排序，这里只做类型/分类过滤
+    shown = semItems.filter(it => (!kind || it.kind === kind) && (!cat || it.category === cat));
+  } else {
+    shown = items.filter(it =>
+      (!kind || it.kind === kind) && (!cat || it.category === cat) &&
+      (!kw || (it.title + it.content).toLowerCase().includes(kw)));
+  }
+  document.getElementById('grid').innerHTML = shown.map(card).join('');
+  document.getElementById('empty').style.display = shown.length ? 'none' : 'block';
+  document.getElementById('empty').textContent =
+    (kw && semMode && semItems && !semItems.length) ? '没有语义相关的商品，换个说法试试' : '暂无相关商品';
+}
+
+function openDetail(id) {
+  const it = items.find(x => x.id === id);
+  if (!it) return;
+  currentId = id;
+  document.getElementById('dTitle').textContent = it.title;
+  document.getElementById('dBody').innerHTML = `
+    ${it.image ? `<img class="detail-img" src="${UPLOAD_BASE}${it.image}">` : ''}
+    <div class="kv"><span class="badge-${it.kind === 'sell' ? 'red' : 'green'}">
+      ${it.kind === 'sell' ? '出售' : '求购'}</span>
+      <span class="badge-green">${esc(it.category)}</span>
+      ${it.status === 'done' ? '<span class="badge-green">已完成</span>' : ''}</div>
+    <div class="kv" style="font-size:16px;font-weight:700;color:#164084">
+      ${it.price != null ? '¥' + it.price : '价格面议'}</div>
+    <div class="kv">发布人：${esc(it.author)}</div>
+    <div class="kv">时间：${fmtTime(it.created_at)}</div>
+    ${it.contact ? `<div class="kv">联系方式：${esc(it.contact)}</div>` : ''}
+    <div class="kv" style="margin-top:10px;color:#333c4e;line-height:1.7">${esc(it.content)}</div>`;
+  document.getElementById('dDone').style.display =
+    (it.author === getUser() && it.status === 'open') ? 'block' : 'none';
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailModal').classList.remove('open'); }
+
+async function doneItem() {
+  try {
+    await api(`/market/${currentId}/done`, { method: 'POST' });
+    closeDetail();
+    load();
+  } catch (e) { alert(e.message || '操作失败'); }
+}
+
+function openCreate() {
+  if (!requireLogin()) return;
+  document.getElementById('createModal').classList.add('open');
+}
+function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
+
+async function submitItem() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('请填写标题'); return; }
+  const fd = new FormData();
+  fd.append('kind', document.querySelector('input[name=mkind]:checked').value);
+  fd.append('category', document.getElementById('fCat').value);
+  fd.append('title', title);
+  fd.append('content', document.getElementById('fContent').value.trim());
+  const price = document.getElementById('fPrice').value;
+  if (price !== '') fd.append('price', price);
+  fd.append('contact', document.getElementById('fContact').value.trim());
+  const file = document.getElementById('fImage').files[0];
+  if (file) fd.append('image', file);
+  const notice = document.getElementById('mkNotice');
+  renderModeration(notice, null);
+  try {
+    const res = await fetch(API + '/market', {
+      method: 'POST',
+      headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {},
+      body: fd,
+    });
+    const r = await res.json();
+    if (res.status >= 400) {
+      throw Object.assign(new Error(r.error || '发布失败'), { moderation: r.moderation });
+    }
+    closeCreate();
+    ['fTitle','fContent','fPrice','fContact','fImage'].forEach(i => document.getElementById(i).value = '');
+    await load();
+    if (semItems) doSearch();
+  } catch (e) {
+    handleWriteError(e, notice);
+  }
+}
+
+async function load() {
+  try {
+    items = await api('/market');
+  } catch (e) {
+    document.getElementById('grid').innerHTML =
+      '<div class="empty">无法连接后端：请启动 backend/app.py 后刷新</div>';
+    return;
+  }
+  render();
+}
+
+document.getElementById('searchInput').addEventListener('input', onSearchInput);
+renderHeader('market.html');
+injectAuthModal();
+renderCatFilters();
+load();
+</script>
+</body>
+</html>

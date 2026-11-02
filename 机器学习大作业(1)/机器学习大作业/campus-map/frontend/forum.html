@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>校园评论 · 南航评论区</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="common.css">
+<style>
+  body { padding-bottom:30px; }
+  .wrap { max-width:820px; margin:0 auto; padding:24px 20px; }
+  .top { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .top h2 { font-size:18px; font-weight:600; color:#16294a; display:flex; align-items:center; gap:8px; }
+  .top h2 svg { width:20px; height:20px; color:#164084; }
+  .search { flex:1; min-width:180px; padding:10px 14px; border:1px solid #e6ebf3;
+            border-radius:12px; font-size:13px; outline:none; transition:.15s; background:#fff; }
+  .search:focus { border-color:#164084; box-shadow:0 0 0 3px rgba(22,64,132,.08); }
+  .post { background:#fff; border-radius:16px; padding:16px 18px; margin-bottom:12px;
+          border:1px solid #eef2f8; box-shadow:0 4px 16px rgba(22,64,132,.06);
+          cursor:pointer; transition:.18s; }
+  .post:hover { box-shadow:0 10px 24px rgba(22,64,132,.12); transform:translateY(-2px); }
+  .post .title { font-size:15px; font-weight:600; color:#16294a; margin-bottom:6px; }
+  .post .excerpt { font-size:13px; color:#6b7a90; line-height:1.65; }
+  .post .meta { font-size:12px; color:#94a3b8; margin-top:8px; display:flex; gap:10px;
+                flex-wrap:wrap; align-items:center; }
+  .empty { text-align:center; color:#94a3b8; padding:40px; font-size:13px; }
+
+  .modal { display:none; position:fixed; inset:0; background:rgba(12,24,48,.5); z-index:100;
+           align-items:center; justify-content:center; }
+  .modal.open { display:flex; }
+  .box { background:#fff; border-radius:18px; padding:24px; width:560px; max-width:94vw;
+         max-height:88vh; overflow-y:auto; border:1px solid #eef2f8;
+         box-shadow:0 24px 56px rgba(15,32,64,.28); }
+  .box h3 { font-size:16px; font-weight:600; color:#16294a; margin-bottom:10px; }
+  .box label { font-size:12px; color:#5b6b87; display:block; margin:10px 0 4px; }
+  .box input,.box textarea { width:100%; padding:10px 12px; border:1px solid #e6ebf3;
+        border-radius:10px; font-size:13px; outline:none; font-family:inherit; }
+  .box input:focus,.box textarea:focus { border-color:#164084; }
+  .box textarea { height:100px; resize:none; }
+  .box .actions { display:flex; gap:8px; margin-top:16px; }
+  .box .actions button { flex:1; padding:10px; border-radius:10px; border:none; cursor:pointer;
+                         font-size:14px; }
+  .citem { padding:10px 0; border-bottom:1px solid #f2f4f8; font-size:13px; }
+  .citem .h { font-size:12px; color:#94a3b8; margin-bottom:3px; }
+  .cmt-form { display:flex; gap:8px; margin-top:12px; }
+  .cmt-form input { flex:1; }
+  .post-img { width:100%; max-height:180px; object-fit:cover; border-radius:10px;
+              margin-top:8px; display:block; }
+  .detail-img { width:100%; max-height:300px; object-fit:cover; border-radius:10px;
+                margin:10px 0; display:block; }
+</style>
+</head>
+<body>
+<div id="header-root"></div>
+<div class="wrap">
+  <div class="top">
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>校园评论</h2>
+    <input class="search" id="searchInput" placeholder="搜索帖子标题 / 内容">
+    <button class="btn-primary" onclick="openCreate()">＋ 发帖</button>
+  </div>
+  <div id="list"></div>
+  <div class="empty" id="empty" style="display:none">暂无相关帖子</div>
+</div>
+
+<!-- 帖子详情 -->
+<div class="modal" id="detailModal">
+  <div class="box">
+    <h3 id="dTitle"></h3>
+    <div class="muted" id="dMeta"></div>
+    <div id="dContent" style="font-size:13px;color:#333c4e;line-height:1.8;margin:12px 0"></div>
+    <img id="dImage" class="detail-img" style="display:none" alt="">
+    <button class="btn-danger" style="padding:5px 14px;border-radius:14px;font-size:12px"
+            onclick="likeCurrent()">点赞 <span id="likeCount">0</span></button>
+    <div style="margin-top:14px">
+      <b style="font-size:13px;color:#26344d">评论</b>
+      <div id="dComments"></div>
+    </div>
+    <div class="cmt-form">
+      <input id="cmtInput" placeholder="写下你的看法…">
+      <button class="btn-primary" onclick="submitComment()">发送</button>
+    </div>
+    <div class="mnotice" id="cmtNotice"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeDetail()">关闭</button>
+      <button class="btn-danger" id="dDelPost" style="display:none" onclick="delPost()">删除帖子</button>
+    </div>
+  </div>
+</div>
+
+<!-- 发帖 -->
+<div class="modal" id="createModal">
+  <div class="box">
+    <h3>发布帖子</h3>
+    <label>标题</label>
+    <input id="fTitle" placeholder="如：期末周图书馆占座现象大家怎么看">
+    <label>正文</label>
+    <textarea id="fContent" placeholder="想聊什么都行，发布后会自动匹配标签"></textarea>
+    <label>配图（选填）</label>
+    <input type="file" id="fImage" accept="image/*">
+    <div class="mnotice" id="postNotice"></div>
+    <div class="actions">
+      <button style="background:#eef2f9;color:#4a5a75" onclick="closeCreate()">取消</button>
+      <button class="btn-primary" onclick="submitPost()">发布</button>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+let posts = [], currentId = null;
+
+function postCard(p) {
+  const excerpt = p.content.length > 90 ? p.content.slice(0, 90) + '…' : p.content;
+  return `<div class="post" onclick="openDetail(${p.id})">
+    <div class="title">${esc(p.title)}</div>
+    <div class="excerpt">${esc(excerpt)}</div>
+    ${p.image ? `<img class="post-img" src="${UPLOAD_BASE}${p.image}" alt="">` : ''}
+    <div class="meta">
+      <span>${esc(p.author)}</span>
+      <span>${fmtTime(p.created_at)}</span>
+      <span>评论 ${p.comment_count}</span>
+      <span>赞 ${p.likes}</span>
+    </div></div>`;
+}
+
+function render() {
+  const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+  const shown = posts.filter(p => !kw || (p.title + p.content).toLowerCase().includes(kw));
+  document.getElementById('list').innerHTML = shown.map(postCard).join('');
+  document.getElementById('empty').style.display = shown.length ? 'none' : 'block';
+}
+
+async function openDetail(id) {
+  const p = await api('/posts/' + id);
+  currentId = id;
+  document.getElementById('dTitle').textContent = p.title;
+  document.getElementById('dMeta').textContent = `${p.author} · ${fmtTime(p.created_at)}`;
+  document.getElementById('dContent').textContent = p.content;
+  const imgEl = document.getElementById('dImage');
+  if (p.image) { imgEl.src = UPLOAD_BASE + p.image; imgEl.style.display = 'block'; }
+  else { imgEl.style.display = 'none'; }
+  document.getElementById('likeCount').textContent = p.likes;
+  document.getElementById('dComments').innerHTML =
+    p.comments.map(c => {
+      // 删评权限（后端还会再校验一次）：评论作者本人，或本帖楼主
+      const me = getUser();
+      const canDel = me && (c.author === me || p.author === me);
+      return `<div class="citem"><div class="h">${esc(c.author)} · ${fmtTime(c.created_at)}`
+        + (canDel ? `<span class="c-del" onclick="delComment(${c.id})">删除</span>` : '')
+        + `</div>${esc(c.content)}</div>`;
+    }).join('') || '<div class="muted" style="padding:8px 0">还没有评论</div>';
+  // 删帖：只有楼主本人可以删（后端还会再校验一次）
+  document.getElementById('dDelPost').style.display =
+    (getUser() && p.author === getUser()) ? 'block' : 'none';
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailModal').classList.remove('open'); }
+
+/* 删帖（连带删除该帖下所有评论） */
+async function delPost() {
+  if (!confirm('确定删除这条帖子吗？帖子下的所有评论也会一起删除，且不可恢复。')) return;
+  try {
+    const r = await api(`/posts/${currentId}`, { method: 'DELETE' });
+    showToast('帖子已删除' + (r && r.comments_deleted ? '（含 ' + r.comments_deleted + ' 条评论）' : ''));
+    closeDetail();
+    document.getElementById('searchInput').value = '';
+    load();
+  } catch (e) { handleWriteError(e, null); }
+}
+
+/* 删评 */
+async function delComment(cid) {
+  if (!confirm('确定删除这条评论吗？删除后不可恢复。')) return;
+  try {
+    await api(`/posts/${currentId}/comments/${cid}`, { method: 'DELETE' });
+    showToast('评论已删除');
+    await openDetail(currentId);
+    load();
+  } catch (e) { handleWriteError(e, null); }
+}
+
+async function likeCurrent() {
+  const r = await api(`/posts/${currentId}/like`, { method: 'POST' });
+  document.getElementById('likeCount').textContent = r.likes;
+  load();
+}
+
+async function submitComment() {
+  const content = document.getElementById('cmtInput').value.trim();
+  if (!content) return;
+  if (!requireLogin()) return;
+  const notice = document.getElementById('cmtNotice');
+  renderModeration(notice, null);
+  try {
+    await api(`/posts/${currentId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+    document.getElementById('cmtInput').value = '';
+    openDetail(currentId);
+    load();
+  } catch (e) {
+    handleWriteError(e, notice);
+  }
+}
+
+function openCreate() {
+  if (!requireLogin()) return;
+  document.getElementById('createModal').classList.add('open');
+}
+function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
+
+async function submitPost() {
+  const title = document.getElementById('fTitle').value.trim();
+  const content = document.getElementById('fContent').value.trim();
+  if (!title || !content) { alert('标题和正文都不能为空'); return; }
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('content', content);
+  const file = document.getElementById('fImage').files[0];
+  if (file) fd.append('image', file);
+  const notice = document.getElementById('postNotice');
+  renderModeration(notice, null);
+  try {
+    const res = await fetch(API + '/posts', {
+      method: 'POST',
+      headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {},
+      body: fd,
+    });
+    const r = await res.json();
+    if (res.status >= 400) {
+      throw Object.assign(new Error(r.error || '发帖失败'), { moderation: r.moderation });
+    }
+    closeCreate();
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fContent').value = '';
+    document.getElementById('fImage').value = '';
+    load();
+  } catch (e) {
+    handleWriteError(e, notice);
+  }
+}
+
+async function load() {
+  try {
+    posts = await api('/posts');
+  } catch (e) {
+    document.getElementById('list').innerHTML =
+      '<div class="empty">无法连接后端：请启动 backend/app.py 后刷新</div>';
+    return;
+  }
+  render();
+}
+
+document.getElementById('searchInput').addEventListener('input', render);
+renderHeader('forum.html');
+injectAuthModal();
+load();
+</script>
+</body>
+</html>
